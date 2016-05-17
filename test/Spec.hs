@@ -17,7 +17,7 @@ instance Arbitrary LargeLBS where
     arbitrary = fmap (LargeLBS . LBS.pack) . liftA2 take (choose (0, 64*1024)) $ (infiniteListOf arbitrary)
 
 prop_sanity_lazy_bytestring_to_chunks_is_aligned :: LargeLBS -> Bool
-prop_sanity_lazy_bytestring_to_chunks_is_aligned (LargeLBS lbs) = aligned (init (LBS.toChunks lbs))
+prop_sanity_lazy_bytestring_to_chunks_is_aligned (LargeLBS lbs) = aligned . init . LBS.toChunks $ lbs
   where aligned xs = all (== True) (map (\x -> ((B.length x) .&. 0xf) == 0) xs)
 
 return []

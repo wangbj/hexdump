@@ -1,9 +1,10 @@
 {-# LANGUAGE BangPatterns #-}
 
 module Hexdump (
-    hexDump
-  , hexDumpHandle
-  , hexDumpFile
+    hexPrint
+  , hexPrintHandle
+  , hexPrintFile
+  , hexDump
   ) where
 
 import qualified Data.ByteString as B
@@ -14,7 +15,8 @@ import           Data.Monoid
 import           Data.Word
 import           Data.Char
 import           Control.Monad.RWS.Strict
-import           System.IO (stdin, stdout, openFile, hClose, IOMode(..), Handle)
+import           Control.Monad.Identity
+import           System.IO (withFile, stdin, stdout, openFile, hClose, IOMode(..), Handle)
 
 data DumpState = DumpState {
     previousBS :: !(Maybe ByteString)
@@ -34,8 +36,8 @@ isAPrint :: Word8 -> Bool
 isAPrint x = x >= 0x20 && x <= 0x7e
 {-# INLINE isAPrint #-}
 
-dumpEntry :: ByteString -> RWST AppConfig Builder DumpState IO ()
-dumpEntry bs = when ((not . B.null) bs) $ do
+dump16B :: (Monad m) => ByteString -> RWST AppConfig Builder DumpState m ()
+dump16B bs = when ((not . B.null) bs) $ do
   (DumpState prev starPrinted ln cnt) <- get
   if (Just bs) == prev then do
     when (not starPrinted) (tell (string7 "*\n"))
@@ -59,26 +61,40 @@ dumpEntry bs = when ((not . B.null) bs) $ do
     put (DumpState (Just bs) False (1+ln) (cnt + (fromIntegral len)))
     tell $! (pp  <> p3)
 
-dumpBS_ bs = when ( (not . B.null) bs ) $ do
+dumpByteString bs = when ( (not . B.null) bs ) $ do
   let (!ent, !bs') = B.splitAt 16 bs
-  dumpEntry ent >> dumpBS_ bs'
+  dump16B ent >> dumpByteString bs'
 
 dumpBSAll :: AppConfig -> DumpState -> [ByteString] -> IO ()
-dumpBSAll cfg st@(DumpState _ _ _ cnt) [] = hPutBuilder stdout (word32HexFixed (fromIntegral cnt) <> string7 "  \n")
+dumpBSAll cfg st@(DumpState _ _ _ cnt) [] = hPutBuilder stdout (word32HexFixed (fromIntegral cnt) <> char7 '\n')
 dumpBSAll cfg st@(DumpState prev repeated ln cnt) (s:ss) = do
-  (!st', !w) <- execRWST (dumpBS_ s) cfg st
+  (!st', !w) <- execRWST (dumpByteString s) cfg st
   hPutBuilder stdout w
   dumpBSAll cfg st' ss
 
-hexDumpLBS cfg st = dumpBSAll cfg st . LBS.toChunks
+dumpBSHelperWith_ :: (Monad m) => AppConfig -> DumpState -> (Builder -> m ()) -> [ByteString] -> m ()
+dumpBSHelperWith_ cfg st@(DumpState _ _ _ cnt) f [] = f (word32HexFixed (fromIntegral cnt) <> char7 '\n')
+dumpBSHelperWith_ cfg st@(DumpState prev repeated ln cnt) f (s:ss) = do
+  (!st', !w) <- execRWST (dumpByteString s) cfg st
+  f w >> dumpBSHelperWith_ cfg st' f ss
 
-hexDumpFile :: FilePath -> IO ()
-hexDumpFile fp =  openFile fp ReadMode >>= hexDumpHandle
+dumpBSHelperWith :: (Monad m) => AppConfig -> DumpState -> (Builder -> m a) -> [ByteString] -> m [a]
+dumpBSHelperWith cfg st@(DumpState _ _ _ cnt) f [] = f (word32HexFixed (fromIntegral cnt) <> char7 '\n') >>= \x -> return [x]
+dumpBSHelperWith cfg st@(DumpState prev repeated ln cnt) f (s:ss) = do
+  (!st', !w) <- execRWST (dumpByteString s) cfg st
+  liftM2 (:) (f w) (dumpBSHelperWith cfg st' f ss)
 
-hexDumpHandle :: Handle -> IO ()
-hexDumpHandle hdl = do
-  contents <- LBS.hGetContents hdl
-  hexDumpLBS defaultConfig defaultState contents
-  return ()
+hexDump :: LBS.ByteString -> LBS.ByteString
+hexDump = LBS.concat . runIdentity . dumpBSHelperWith defaultConfig defaultState (Identity .  toLazyByteString) . LBS.toChunks
 
-hexDump = hexDumpHandle stdin
+-- convert lazy byte string <-> strict byte string then print the strict byte string
+-- is about 50-80% faster than call ``hPutBuilder`` for each strict bytestring
+-- even though conversion between lazy <-> strict bytestring is costly
+hexPrintHandle :: Handle -> IO ()
+hexPrintHandle hdl = LBS.hGetContents hdl >>= mapM_ B.putStr . LBS.toChunks . hexDump
+
+hexPrintFile fp = withFile fp ReadMode hexPrintHandle
+{-# INLINE hexPrintFile #-}
+
+hexPrint = hexPrintHandle stdin
+{-# INLINE hexPrint #-}
