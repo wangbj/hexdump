@@ -1,0 +1,28 @@
+sudo: false
+
+ghc
+  - 7.10
+
+env:
+  - CABALVER=1.22 GHCVER=7.10.3 QC=QuichCheck-2.8.1 CRITERION=Criterion-1.1.1.0
+
+cache:
+    directories:
+        - $HOME/.ghc
+        - $HOME/.cabal
+        - $HOME/.stack
+
+addons:
+  apt:
+    sources:
+      - hvr-ghc
+    packages:
+      - ghc-7.10.3
+      - cabal-install-1.22
+
+before_install:
+- export PATH=$HOME/.local/bin:/opt/ghc/$GHCVER/bin:$PATH;;
+- ./.travis-setup.sh
+
+script:
+  - ./travis.sh
