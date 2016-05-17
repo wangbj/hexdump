@@ -1,5 +1,4 @@
-https://travis-ci.org/wangbj/hexdump.svg?branch=master
-
+[![Build Status](https://travis-ci.org/wangbj/hexdump.svg?branch=master)](https://travis-ci.org/wangbj/hexdump)
 # hexdump
 
 hexdump files which is equivalent to unix tool ``hexdump -C``.
