@@ -2,7 +2,7 @@
 
 hexdump files which is equivalent to unix tool ``hexdump -C``.
 
-wrote this tool to explorer how to write performant haskell code, as well as different I/O model. planning to rewrite the tool with ``conduit`` and ``pipes`` library to learn more about iteraree I/O.
+wrote this tool to explorer how to write performant haskell code, as well as different I/O model.
 
 This version (intial) mixed Lazy/Strict I/O, consumes constant space, while out perform the standard unix ``hexdump -C`` tool (for a larger file).
 
