@@ -22,6 +22,19 @@ sys     0m4.734s
 
 $ diff -ubp /tmp/o1.txt /tmp/o2.txt
 $
+
+$ time cat linux-4.5.tar.xz | hexdump -C > /dev/null
+
+real    0m42.766s
+user    0m41.863s
+sys     0m2.215s
+
+$ time cat linux-4.5.tar.xz | stack exec hexdump-exe -- +RTS -N1 -RTS   > /dev/null
+
+real    0m36.590s
+user    0m33.534s
+sys     0m3.407s
+
 ```
 
 Another run with ``-s``:
