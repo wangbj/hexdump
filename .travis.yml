@@ -21,6 +21,6 @@ install:
   - stack build
 
 script:
-  - stack build && stack test --output criterion.html
+  - stack build && stack test
   
 after_install:
