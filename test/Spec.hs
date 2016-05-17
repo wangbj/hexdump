@@ -24,10 +24,14 @@ prop_sanity_lazy_bytestring_to_chunks_is_aligned (LargeLBS lbs) = aligned . init
 return []
 runTests = $quickCheckAll
 
+main = runTests >> return ()
+
+{-
 testInput = "README.md"
-main = runTests >> defaultMain [
+defaultMain [
   bgroup "hex dump" [
       bench "without interleave IO" $ nfIO (hexPrintFile testInput)
     , bench "with interleave IO" $ nfIO (hexPrintFile' testInput)
     ]
   ]
+-}
