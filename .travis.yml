@@ -12,17 +12,18 @@ cache:
         - $HOME/.cabal
         - $HOME/.stack
 
+before_install:
+# Download and unpack the stack executable
+- mkdir -p ~/.local/bin
+- export PATH=$HOME/.local/bin:/opt/ghc/7.10.3/bin:$PATH
+- travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
+
 addons:
   apt:
     sources:
-      - hvr-ghc
+    - hvr-ghc
     packages:
-      - ghc-7.10.3
-      - cabal-install-1.22
-
-before_install:
-- export PATH=$HOME/.local/bin:/opt/ghc/$GHCVER/bin:$PATH;;
-- ./.travis-setup.sh
+    - ghc-7.10.3
 
 script:
   - ./travis.sh
