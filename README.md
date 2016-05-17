@@ -1,3 +1,5 @@
+https://travis-ci.org/wangbj/hexdump.svg?branch=master
+
 # hexdump
 
 hexdump files which is equivalent to unix tool ``hexdump -C``.
