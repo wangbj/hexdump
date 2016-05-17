@@ -1,11 +1,8 @@
 # hexdump
 
 hexdump files which is equivalent to unix tool ``hexdump -C``.
-
 wrote this tool to explore how to write performant haskell code, as well as different I/O models.
-
 This version (intial) mixes Lazy/Strict I/O, consumes constant space, while out performs the standard unix ``hexdump -C`` tool (for a larger file).
-
 threading is not used (``-N1``), run with ``+RTS -Nx`` where ``x > 1`` causes serious performance degration due to parallel GC.
 
 ```
