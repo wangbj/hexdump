@@ -2,11 +2,11 @@
 
 hexdump files which is equivalent to unix tool ``hexdump -C``.
 
-wrote this tool to explorer how to write performant haskell code, as well as different I/O model.
+wrote this tool to explore how to write performant haskell code, as well as different I/O models.
 
-This version (intial) mixed Lazy/Strict I/O, consumes constant space, while out perform the standard unix ``hexdump -C`` tool (for a larger file).
+This version (intial) mixes Lazy/Strict I/O, consumes constant space, while out performs the standard unix ``hexdump -C`` tool (for a larger file).
 
-threading is not used, run with ``+RTS -Nx`` where ``x > 1`` causes serious performance degration due to parallel GC.
+threading is not used (``-N1``), run with ``+RTS -Nx`` where ``x > 1`` causes serious performance degration due to parallel GC.
 
 ```
 $ ~/stack/hexdump $ time cat linux-4.5.tar.xz | stack exec hexdump-exe -- +RTS -N1 -RTS   > /tmp/o2.txt
