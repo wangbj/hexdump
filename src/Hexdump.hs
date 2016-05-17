@@ -57,8 +57,7 @@ dumpEntry bs = when ((not . B.null) bs) $ do
         !pp = if len < 8 then p2 <> string7 ( replicate ((16 - len)*3+1) ' ') else
                if len < 16 then p2 <> string7 (replicate ((16-len)*3) ' ') else p2
     put (DumpState (Just bs) False (1+ln) (cnt + (fromIntegral len)))
-    tell (pp  <> p3)
-    return ()
+    tell $! (pp  <> p3)
 
 dumpBS_ bs = when ( (not . B.null) bs ) $ do
   let (!ent, !bs') = B.splitAt 16 bs
