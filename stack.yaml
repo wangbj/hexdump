@@ -1,0 +1,7 @@
+flags: {}
+extra-package-dbs: []
+packages:
+- '.'
+extra-deps:
+- bytestring-0.10.8.0
+resolver: lts-5.16
