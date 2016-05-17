@@ -2,8 +2,11 @@
 
 module Hexdump (
     hexPrint
+  , hexPrint'
   , hexPrintHandle
+  , hexPrintHandle'
   , hexPrintFile
+  , hexPrintFile'
   , hexDump
   ) where
 
@@ -65,13 +68,6 @@ dumpByteString bs = when ( (not . B.null) bs ) $ do
   let (!ent, !bs') = B.splitAt 16 bs
   dump16B ent >> dumpByteString bs'
 
-dumpBSAll :: AppConfig -> DumpState -> [ByteString] -> IO ()
-dumpBSAll cfg st@(DumpState _ _ _ cnt) [] = hPutBuilder stdout (word32HexFixed (fromIntegral cnt) <> char7 '\n')
-dumpBSAll cfg st@(DumpState prev repeated ln cnt) (s:ss) = do
-  (!st', !w) <- execRWST (dumpByteString s) cfg st
-  hPutBuilder stdout w
-  dumpBSAll cfg st' ss
-
 dumpBSHelperWith_ :: (Monad m) => AppConfig -> DumpState -> (Builder -> m ()) -> [ByteString] -> m ()
 dumpBSHelperWith_ cfg st@(DumpState _ _ _ cnt) f [] = f (word32HexFixed (fromIntegral cnt) <> char7 '\n')
 dumpBSHelperWith_ cfg st@(DumpState prev repeated ln cnt) f (s:ss) = do
@@ -87,14 +83,24 @@ dumpBSHelperWith cfg st@(DumpState prev repeated ln cnt) f (s:ss) = do
 hexDump :: LBS.ByteString -> LBS.ByteString
 hexDump = LBS.concat . runIdentity . dumpBSHelperWith defaultConfig defaultState (Identity .  toLazyByteString) . LBS.toChunks
 
+hexDumpIO :: LBS.ByteString -> IO ()
+hexDumpIO = dumpBSHelperWith_ defaultConfig defaultState (hPutBuilder stdout) . LBS.toChunks
+
 -- convert lazy byte string <-> strict byte string then print the strict byte string
 -- is about 50-80% faster than call ``hPutBuilder`` for each strict bytestring
 -- even though conversion between lazy <-> strict bytestring is costly
 hexPrintHandle :: Handle -> IO ()
 hexPrintHandle hdl = LBS.hGetContents hdl >>= mapM_ B.putStr . LBS.toChunks . hexDump
 
+hexPrintHandle' :: Handle -> IO ()
+hexPrintHandle' hdl = LBS.hGetContents hdl >>= hexDumpIO
+
 hexPrintFile fp = withFile fp ReadMode hexPrintHandle
 {-# INLINE hexPrintFile #-}
+hexPrintFile' fp = withFile fp ReadMode hexPrintHandle'
+{-# INLINE hexPrintFile' #-}
 
 hexPrint = hexPrintHandle stdin
 {-# INLINE hexPrint #-}
+hexPrint' = hexPrintHandle' stdin
+{-# INLINE hexPrint' #-}

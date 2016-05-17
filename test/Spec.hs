@@ -4,6 +4,7 @@ import Test.QuickCheck hiding ( (.&.) )
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString as B
 import           Data.ByteString (ByteString)
+import           Criterion.Main
 import           Control.Monad
 import           Control.Applicative
 import           Data.Word
@@ -23,5 +24,10 @@ prop_sanity_lazy_bytestring_to_chunks_is_aligned (LargeLBS lbs) = aligned . init
 return []
 runTests = $quickCheckAll
 
-main :: IO ()
-main = runTests >> return ()
+testInput = "/lib/libc.so.6"
+main = runTests >> defaultMain [
+  bgroup "hex dump" [
+      bench "without interleave IO" $ nfIO (hexPrintFile testInput)
+    , bench "with interleave IO" $ nfIO (hexPrintFile' testInput)
+    ]
+  ]
