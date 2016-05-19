@@ -3,23 +3,20 @@
 module Hexdump (
     hexPrint
   , hexPrint'
-  , hexPrintHandle
-  , hexPrintHandle'
-  , hexPrintFile
-  , hexPrintFile'
   , hexDump
   ) where
 
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Lazy as LBS
-import           Data.ByteString (ByteString)
+import           Control.Monad.Identity
+import           Control.Monad.RWS.Strict
+import           Data.ByteString          (ByteString)
+import qualified Data.ByteString          as B
 import           Data.ByteString.Builder
+import qualified Data.ByteString.Lazy     as LBS
+import           Data.Char
 import           Data.Monoid
 import           Data.Word
-import           Data.Char
-import           Control.Monad.RWS.Strict
-import           Control.Monad.Identity
-import           System.IO (withFile, stdin, stdout, openFile, hClose, IOMode(..), Handle)
+import           System.IO                (Handle, IOMode (..), hClose,
+                                           openFile, stdin, stdout, withFile)
 
 data DumpState = DumpState {
     previousBS :: !(Maybe ByteString)
@@ -40,13 +37,13 @@ isAPrint x = x >= 0x20 && x <= 0x7e
 {-# INLINE isAPrint #-}
 
 dump16B :: (Monad m) => ByteString -> RWST AppConfig Builder DumpState m ()
-dump16B bs = when ((not . B.null) bs) $ do
+dump16B bs = unless (B.null bs) $ do
   (DumpState prev starPrinted ln cnt) <- get
-  if (Just bs) == prev then do
-    when (not starPrinted) (tell (string7 "*\n"))
+  if Just bs == prev then do
+    unless starPrinted (tell (string7 "*\n"))
     put (DumpState prev True (1+ln) (16+cnt))
     else do
-    let !p1 = word32HexFixed ((fromIntegral ln) * 16) <> string7 "  "
+    let !p1 = word32HexFixed (fromIntegral ln * 16) <> string7 "  "
         !p2 = snd . B.foldl acc1 (1, p1) $ bs
         !p3 = string7 " |" <> B.foldl acc2 mempty bs <> string7 "|\n"
         acc1 (!k, !w) !c
@@ -59,12 +56,13 @@ dump16B bs = when ((not . B.null) bs) $ do
           | otherwise  = w <> char7 '.'
         {-# INLINE acc2 #-}
         !len = B.length bs
-        !pp = if len < 8 then p2 <> string7 ( replicate ((16 - len)*3+1) ' ') else
-               if len < 16 then p2 <> string7 (replicate ((16-len)*3) ' ') else p2
-    put (DumpState (Just bs) False (1+ln) (cnt + (fromIntegral len)))
+        !pp | len < 8   = p2 <> string7 ( replicate ((16 - len)*3+1) ' ')
+            | len < 16  = p2 <> string7 (replicate ((16-len)*3) ' ')
+            | otherwise = p2
+    put (DumpState (Just bs) False (1+ln) (cnt + fromIntegral len))
     tell $! (pp  <> p3)
 
-dumpByteString bs = when ( (not . B.null) bs ) $ do
+dumpByteString bs = unless (B.null bs ) $ do
   let (!ent, !bs') = B.splitAt 16 bs
   dump16B ent >> dumpByteString bs'
 
@@ -89,18 +87,18 @@ hexDumpIO = dumpBSHelperWith_ defaultConfig defaultState (hPutBuilder stdout) . 
 -- convert lazy byte string <-> strict byte string then print the strict byte string
 -- is about 50-80% faster than call ``hPutBuilder`` for each strict bytestring
 -- even though conversion between lazy <-> strict bytestring is costly
-hexPrintHandle :: Handle -> IO ()
-hexPrintHandle hdl = LBS.hGetContents hdl >>= mapM_ B.putStr . LBS.toChunks . hexDump
+hexPrintToHandle :: Handle -> IO ()
+hexPrintToHandle hdl = LBS.hGetContents hdl >>= mapM_ B.putStr . LBS.toChunks . hexDump
 
-hexPrintHandle' :: Handle -> IO ()
-hexPrintHandle' hdl = LBS.hGetContents hdl >>= hexDumpIO
+hexPrintToHandle' :: Handle -> IO ()
+hexPrintToHandle' hdl = LBS.hGetContents hdl >>= hexDumpIO
 
-hexPrintFile fp = withFile fp ReadMode hexPrintHandle
-{-# INLINE hexPrintFile #-}
-hexPrintFile' fp = withFile fp ReadMode hexPrintHandle'
-{-# INLINE hexPrintFile' #-}
+hexPrintToFile fp = withFile fp ReadMode hexPrintToHandle
+{-# INLINE hexPrintToFile #-}
+hexPrintToFile' fp = withFile fp ReadMode hexPrintToHandle'
+{-# INLINE hexPrintToFile' #-}
 
-hexPrint = hexPrintHandle stdin
+hexPrint = hexPrintToHandle stdin
 {-# INLINE hexPrint #-}
-hexPrint' = hexPrintHandle' stdin
+hexPrint' = hexPrintToHandle' stdin
 {-# INLINE hexPrint' #-}
